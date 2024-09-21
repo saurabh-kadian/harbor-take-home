@@ -10,7 +10,9 @@ import java.util.List;
 
 @Repository
 public interface EventRepository extends JpaRepository<Event, String> {
-
     @Query("SELECT e FROM Event e WHERE e.startTime >= :start AND e.startTime <= :end")
     List<Event> findEventsBetween(@Param("start") Long start, @Param("end") Long end);
+
+    @Query("SELECT e FROM Event e WHERE e.startTime >= :start LIMIT 1")
+    Event findNextEvent(@Param("start") Long start);
 }

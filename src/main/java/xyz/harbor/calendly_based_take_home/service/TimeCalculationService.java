@@ -4,12 +4,27 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import xyz.harbor.calendly_based_take_home.model.SessionLength;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class TimeCalculationService {
+
+    public static Long getTimeInSeconds(LocalDateTime localDateTime, ZoneId zoneId){
+        return localDateTime.atZone(zoneId).toEpochSecond();
+    }
+
+    public static LocalDateTime getTimeInLocalDateTime(Long timeInSeconds, ZoneId zoneId){
+        return LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(timeInSeconds),
+                    zoneId
+            );
+    }
 
     public static Long getEndTimeInSeconds(SessionLength sessionLength, Long startTime){
         return startTime + sessionLength.timeInSeconds;
@@ -45,5 +60,8 @@ public class TimeCalculationService {
         return Optional.of(SessionLength.BLOCKING_MINUTE_1);
     }
 
+    public static boolean isStartOfDay(LocalDateTime claimedStartOfDay){
+        return claimedStartOfDay.toLocalTime().equals(LocalTime.MIDNIGHT);
+    }
 
 }

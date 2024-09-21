@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import xyz.harbor.calendly_based_take_home.model.Event;
 import xyz.harbor.calendly_based_take_home.model.SessionLength;
+import xyz.harbor.calendly_based_take_home.service.TimeCalculationService;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -48,12 +49,7 @@ public class EventDTO {
                 .attendeeName(SELF_KEY)
                 .attendeeEmail(SELF_KEY)
                 .sessionLength(sessionLength)
-                .startTime(
-                        LocalDateTime.ofInstant(
-                                Instant.ofEpochSecond(startTime),
-                                ZoneId.systemDefault()
-                        )
-                )
+                .startTime(TimeCalculationService.getTimeInLocalDateTime(startTime, ZoneId.systemDefault()))
                 .build();
     }
 }
