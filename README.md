@@ -62,6 +62,7 @@ For low user numbers and our current feature set, it doesn't really matter. So i
 2. Meeting link can be set to some default, so we can push with the same meeting link atleast. Have a field for that in our schema.
 3. Allow overlap findings between multiple users. Show availability as well as their blocked calendars.
 4. Balance timezone difference between meetings. Already setup most of the code but need to weed out corner cases using tests.
+5. Setup cache on availability APIs. Have redis setup in docker, connection will be done via Spring redis connector. 
 
 ## Postman collection available [here](xyz.harbor.calendly.postman_collection.json)
 ----

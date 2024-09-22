@@ -1,20 +1,5 @@
 version: "3.2"
 services:
-#  s3mock:
-#    image: adobe/s3mock:latest
-#    container_name: s3mock
-#    environment:
-#      - 'debug=true'
-#      - 'retainFilesOnExit=true'
-#      - 'root=containers3root'
-#      - 'validKmsKeys=arn:aws:kms:us-east-1:47110815:key/c51fdeea-f623-4a2b-90b5-15d72963cf9d, arn:aws:kms:us-east-1:47110815:key/c4353c4c-3318-460a-bdcc-b0a57bd8d9d8'
-#    ports:
-#      - '9090:9090'
-#      - '9191:9191'
-#    volumes:
-#      - ./locals3root:/containers3root
-#    networks:
-#      - common_network
   backend:
     container_name: backend
     build:
@@ -24,9 +9,7 @@ services:
       - "8080:8080"
     depends_on:
       - postgresdb
-#      - s3mock
       - redis
-#      - elasticsearch
     networks:
       - common_network
   postgresdb:
@@ -51,32 +34,9 @@ services:
     command: 'redis-server'
     networks:
       - common_network
-#  elasticsearch:
-#    image: docker.elastic.co/elasticsearch/elasticsearch:7.2.0
-#    container_name: elasticsearch
-#    environment:
-#      - 'node.name=elasticsearch'
-#      - 'discovery.type=single-node'
-#      - 'cluster.name=docker-cluster'
-#      - 'bootstrap.memory_lock=true'
-#      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-#    ulimits:
-#      memlock:
-#        soft: -1
-#        hard: -1
-#    volumes:
-#      - esdata:/usr/share/elasticsearch/data
-#    ports:
-#      - "9300:9300"
-#      - "9200:9200"
-#    networks:
-#      - common_network
 networks:
   common_network:
     driver: bridge
 volumes:
   db:
     driver: local
-#  esdata:
-#    driver: local
-#
