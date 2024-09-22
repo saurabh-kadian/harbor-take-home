@@ -1,19 +1,32 @@
 package xyz.harbor.calendly_based_take_home.service;
 
-import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import xyz.harbor.calendly_based_take_home.model.SessionLength;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class TimeCalculationService {
+
+    public static LocalDateTime setToStartOfDay(LocalDateTime dateTime){
+        return dateTime.withHour(0).withMinute(0).withSecond(0);
+    }
+
+    public static LocalDateTime convertLocalTimeToLocalDateTime(LocalTime localTime){
+        return LocalDateTime.now()
+                .withHour(localTime.getHour())
+                .withMinute(localTime.getMinute())
+                .withSecond(localTime.getSecond());
+    }
+
+    public static Long getTimeInSeconds(LocalDateTime day, LocalTime localTime, ZoneId zoneId){
+        LocalDateTime dateTimeWithTime = day.withHour(localTime.getHour())
+                .withMinute(localTime.getMinute())
+                .withSecond(localTime.getSecond());
+        return dateTimeWithTime.atZone(zoneId).toEpochSecond();
+    }
 
     public static Long getTimeInSeconds(LocalDateTime localDateTime, ZoneId zoneId){
         return localDateTime.atZone(zoneId).toEpochSecond();
@@ -26,38 +39,31 @@ public class TimeCalculationService {
             );
     }
 
+    public static LocalDateTime getEndTimeLocalDateTime(LocalDateTime localDateTime, SessionLength sessionLength){
+        return localDateTime.plusSeconds(sessionLength.timeInSeconds);
+    }
+
     public static Long getEndTimeInSeconds(SessionLength sessionLength, Long startTime){
         return startTime + sessionLength.timeInSeconds;
     }
 
-    public static List<Pair<SessionLength, Long>> getBlockedSessions(Long startTime, Long endTime){
-        List<Pair<SessionLength, Long>> blockedSessions = new ArrayList<>();
-        while(startTime >= endTime) {
-            Optional<SessionLength> biggestSessionOptional = pullBiggestSession(startTime, endTime);
-            if(biggestSessionOptional.isEmpty())
+    public static List<Long> getAvailableSessions(Long startTime, Long endTime, SessionLength sessionLength){
+        List<Long> blockedSessions = new ArrayList<>();
+        while(startTime <= endTime) {
+            if(!pullSession(startTime, endTime, sessionLength))
                 break;
-            SessionLength biggestSession = biggestSessionOptional.get();
-            blockedSessions.add(Pair.of(biggestSession, startTime));
-            startTime += biggestSession.timeInSeconds;
+            blockedSessions.add(startTime);
+            startTime += sessionLength.timeInSeconds;
         }
         return blockedSessions;
     }
 
     // TODO(skadian): For extensibility, take all the values of the enum, sort by timeInSeconds in descending and start
     //                allocating
-    private static Optional<SessionLength> pullBiggestSession(Long startTime, Long endTime){
-        Long difference = endTime - startTime;
-        if(difference <= 0)
-            return Optional.empty();
-        if(difference >= SessionLength.MINUTES_60.timeInSeconds)
-            return Optional.of(SessionLength.MINUTES_60);
-        if(difference >= SessionLength.MINUTES_45.timeInSeconds)
-            return Optional.of(SessionLength.MINUTES_45);
-        if(difference >= SessionLength.MINUTES_30.timeInSeconds)
-            return Optional.of(SessionLength.MINUTES_30);
-        if(difference >= SessionLength.MINUTES_15.timeInSeconds)
-            return Optional.of(SessionLength.MINUTES_15);
-        return Optional.of(SessionLength.BLOCKING_MINUTE_1);
+    private static Boolean pullSession(Long startTime, Long endTime, SessionLength sessionLength){
+        if(endTime - startTime >= sessionLength.timeInSeconds)
+            return Boolean.TRUE;
+        return Boolean.FALSE;
     }
 
     public static boolean isStartOfDay(LocalDateTime claimedStartOfDay){

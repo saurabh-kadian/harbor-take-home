@@ -3,8 +3,6 @@ package xyz.harbor.calendly_based_take_home.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public enum SessionLength {
-    @JsonProperty("1m")
-    BLOCKING_MINUTE_1("1 Minute", 60),
     @JsonProperty("15m")
     MINUTES_15("15 Minutes", 15 * 60),
     @JsonProperty("30m")
@@ -20,6 +18,16 @@ public enum SessionLength {
     SessionLength(String label, int timeInSeconds){
         this.label = label;
         this.timeInSeconds = timeInSeconds;
+    }
+
+    public static SessionLength fromJsonString(String jsonLabel){
+        return switch (jsonLabel) {
+            case "15m" -> MINUTES_15;
+            case "30m" -> MINUTES_30;
+            case "45m" -> MINUTES_45;
+            case "60m" -> MINUTES_60;
+            default -> throw new IllegalArgumentException("Unknown session length: " + jsonLabel);
+        };
     }
 
     public static SessionLength fromLabel(String sessionLabel){

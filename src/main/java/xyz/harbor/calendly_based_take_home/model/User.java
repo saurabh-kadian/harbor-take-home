@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 
 // TODO(skadian): Take care of Timezones for scheduling
@@ -38,16 +39,15 @@ public class User {
     @Column(name="salt", nullable = false)
     String salt;
 
-    @ElementCollection(targetClass = SessionLength.class)
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.ORDINAL)
     @Column(name = "preferred_session_length")
     private SessionLength preferredSessionLength;
 
     @Column(name= "preferred_working_hours_start_time")
-    LocalDateTime preferredWorkingHoursStartTime;
+    LocalTime preferredWorkingHoursStartTime;
 
     @Column(name = "preferred_working_hours_end_time")
-    LocalDateTime preferredWorkingHoursEndTime;
+    LocalTime preferredWorkingHoursEndTime;
 
     @Column(name = "default_meeting_link")
     String defaultMeetingLink;

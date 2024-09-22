@@ -31,6 +31,10 @@ public class EventDTO {
     LocalDateTime startTime;
     SessionLength sessionLength;
 
+    public static EventDTO empty(){
+        return EventDTO.builder().build();
+    }
+
     public static EventDTO fromEvent(Event event){
         return EventDTO.builder()
                 .attendeeName(event.getAttendeeName())

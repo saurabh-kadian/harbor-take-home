@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import xyz.harbor.calendly_based_take_home.request.MarkUnavailabilityRequest;
+import xyz.harbor.calendly_based_take_home.service.TimeCalculationService;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -20,28 +21,29 @@ public class UnavailabilityDTO {
     ZoneId timezone;
 
     public long getStartTimeInSeconds(){
-        return startOfUnavailability.atZone(timezone).toEpochSecond();
+        return TimeCalculationService.getTimeInSeconds(startOfUnavailability, timezone);
     }
 
     public long getEndTimeInSeconds(){
-        return endOfUnavailability.atZone(timezone).toEpochSecond();
+        return TimeCalculationService.getTimeInSeconds(endOfUnavailability, timezone);
     }
 
     public static UnavailabilityDTO from(MarkUnavailabilityRequest markUnavailabilityRequest){
+        ZoneId timezone = ZoneId.of(markUnavailabilityRequest.getTimezone());
         return UnavailabilityDTO.builder()
                 .startOfUnavailability(
-                    LocalDateTime.ofInstant(
-                        Instant.ofEpochSecond(Long.parseLong(markUnavailabilityRequest.getStartOfUnavailability())),
-                        ZoneId.of(markUnavailabilityRequest.getTimezone())
-                    )
+                        TimeCalculationService.getTimeInLocalDateTime(
+                                Long.parseLong(markUnavailabilityRequest.getStartOfUnavailability()),
+                                timezone
+                        )
                 )
                 .endOfUnavailability(
-                    LocalDateTime.ofInstant(
-                            Instant.ofEpochSecond(Long.parseLong(markUnavailabilityRequest.getEndOfUnavailability())),
-                            ZoneId.of(markUnavailabilityRequest.getTimezone())
-                    )
+                        TimeCalculationService.getTimeInLocalDateTime(
+                                Long.parseLong(markUnavailabilityRequest.getEndOfUnavailability()),
+                                timezone
+                        )
                 )
-                .timezone(ZoneId.of(markUnavailabilityRequest.getTimezone()))
+                .timezone(timezone)
                 .build();
     }
 

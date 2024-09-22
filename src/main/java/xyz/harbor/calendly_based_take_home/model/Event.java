@@ -33,13 +33,9 @@ public class Event {
     @Column(name = "start_time", nullable = false)
     LocalDateTime startTime;
 
-    @ElementCollection(targetClass = SessionLength.class)
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.ORDINAL)
     @Column(name = "session_length")
     SessionLength sessionLength;
-
-//    @Convert(converter = JSONSessionMapConverter.class)
-//    Map<String, String> sessionDetails;
 
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;

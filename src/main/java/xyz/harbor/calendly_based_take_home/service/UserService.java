@@ -1,5 +1,6 @@
 package xyz.harbor.calendly_based_take_home.service;
 
+import xyz.harbor.calendly_based_take_home.model.SessionLength;
 import xyz.harbor.calendly_based_take_home.request.UpdateUserPasswordRequest;
 import xyz.harbor.calendly_based_take_home.response.UserResponse;
 import xyz.harbor.calendly_based_take_home.mapper.UserMapper;
@@ -13,6 +14,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,6 +47,16 @@ public class UserService {
                 .firstName(createUserRequest.getFirstName())
                 .lastName(createUserRequest.getLastName())
                 .username(createUserRequest.getUsername())
+                .preferredTimezone(ZoneId.of(createUserRequest.getTimezone()))
+                .preferredSessionLength(SessionLength.fromLabel(createUserRequest.getPreferredSessionLength()))
+                .preferredWorkingHoursStartTime(
+                        LocalTime.parse(createUserRequest.getPreferredStartingWorkingHours(),
+                                        DateTimeFormatter.ISO_TIME)
+                )
+                .preferredWorkingHoursEndTime(
+                        LocalTime.parse(createUserRequest.getPreferredEndingWorkingHours(),
+                                        DateTimeFormatter.ISO_TIME)
+                )
                 .hashedPassword(hashedPassword)
                 .salt(salt)
                 .build();

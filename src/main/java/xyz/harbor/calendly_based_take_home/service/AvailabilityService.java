@@ -1,7 +1,6 @@
 package xyz.harbor.calendly_based_take_home.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.util.Pair;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,7 +13,6 @@ import xyz.harbor.calendly_based_take_home.model.User;
 import xyz.harbor.calendly_based_take_home.repository.EventRepository;
 import xyz.harbor.calendly_based_take_home.repository.UserRepository;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -40,29 +38,31 @@ public class AvailabilityService {
 
     public List<EventDTO> markUnavailability(UnavailabilityDTO unavailabilityDTO, String userId){
         User user = validateUser(userId);
-        List<Event> eventsBetween = eventRepository.findEventsBetween(unavailabilityDTO.getStartTimeInSeconds(),
-                                                                      unavailabilityDTO.getEndTimeInSeconds());
+        List<Event> eventsBetween = eventRepository.findEventsBetween(user,
+                unavailabilityDTO.getStartOfUnavailability(),
+                unavailabilityDTO.getEndOfUnavailability());
         List<Event> eventsBetweenByOthers = eventsBetween.stream().filter(EventDTO::isSessionBlockedByOthers).toList();
 
         if(!eventsBetweenByOthers.isEmpty())
             throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, "You have a meeting setup between mentioned period of unavailability.");
 
-        // TODO(skadian): Throwing here, otherwise we can simply merge these time quanta(s) by remove earlier events
-        //                taking maximum of endTime and minimum of startTime and allocating events again.
+        // TODO(skadian): Throwing here, otherwise we can simply merge these intersecting time quanta(s) by removing
+        //                earlier events taking maximum of endTime and minimum of startTime and allocating events again.
         if(!eventsBetween.isEmpty())
             throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, "You already made some sections of this time unavailable, ma;ybe try with smaller values");
 
-        List<Pair<SessionLength, Long>> blockedSessions = TimeCalculationService.getBlockedSessions(
+        List<Long> availableSessions = TimeCalculationService.getAvailableSessions(
                 unavailabilityDTO.getStartTimeInSeconds(),
-                unavailabilityDTO.getEndTimeInSeconds()
+                unavailabilityDTO.getEndTimeInSeconds(),
+                user.getPreferredSessionLength()
         );
 
-        return blockedSessions
+        return availableSessions
                 .stream()
-                .map(sessionRawPair -> EventDTO
+                .map(sessionStartTime -> EventDTO
                         .forSelfUnavailability(
-                                sessionRawPair.getSecond(),
-                                sessionRawPair.getFirst()
+                                sessionStartTime,
+                                user.getPreferredSessionLength()
                         )
                 )
                 .peek(eventDTO -> {
@@ -80,113 +80,248 @@ public class AvailabilityService {
                 .toList();
     }
 
-    public List<EventDTO> getMeetups(int days, String userId, String timezone){
+    // TODO(skadian): Not adjusting for timezone here because user already has a preferred timezone.
+    public List<EventDTO> getMeetups(int days, String userId){
         if(days >= 62)
-            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, "Support missing for dates more than 2 months from now");
+            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,
+                    "Support unavailable for dates more than 2 months into the future.");
         User user = validateUser(userId);
-        ZoneId zoneIdTimezone = ZoneId.of(timezone);
         LocalDateTime currentTime = LocalDateTime.now();
         LocalDateTime endTime = currentTime.plusDays(days);
-        List<Event> eventsBetween = eventRepository.findEventsBetween(
-                    TimeCalculationService.getTimeInSeconds(currentTime, zoneIdTimezone),
-                    TimeCalculationService.getTimeInSeconds(endTime, zoneIdTimezone)
-                );
+        List<Event> eventsBetween = eventRepository.findEventsBetween(user, currentTime, endTime);
         return eventsBetween.stream().map(EventDTO::fromEvent).toList();
     }
 
     public EventDTO getNextMeetup(String userId){
         User user = validateUser(userId);
-        Event nextEvent = eventRepository.findNextEvent(
-                TimeCalculationService.getTimeInSeconds(
-                        LocalDateTime.now(),
-                        user.getPreferredTimezone()
-                )
-        );
-        return EventDTO.fromEvent(nextEvent);
+        Optional<Event> nextEvent = eventRepository.findTopByUserAndStartTimeGreaterThanEqualOrderByStartTimeAsc(user,
+                LocalDateTime.now());
+        if(nextEvent.isEmpty())
+            return EventDTO.empty();
+        return EventDTO.fromEvent(nextEvent.get());
     }
 
-    // TODO(skadian): Assuming we are only keeping track of unix epoch timestamps, we send startOfDay timestamp
-    //                to send a particular day
-    // TODO(skadian): Clean up
-    public List<AvailabilityDTO> getAvailability(LocalDateTime startOfDay, String userId){
+    public List<AvailabilityDTO> getAvailability(LocalDateTime localDateTime, String userId){
+        return this.getAvailability(localDateTime, userId, Optional.empty());
+    }
+
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+    public List<AvailabilityDTO> getAvailability(LocalDateTime localDateTime,
+                                                 String userId,
+                                                 Optional<SessionLength> sessionLengthOptional){
         User user = validateUser(userId);
-        if(!TimeCalculationService.isStartOfDay(startOfDay))
-            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, "Timestamp sent is not start of day");
-        LocalDateTime nextDayStart = startOfDay.plusHours(24);
-        List<Event> eventsBetween = eventRepository.findEventsBetween(
-                TimeCalculationService.getTimeInSeconds(startOfDay, user.getPreferredTimezone()),
-                TimeCalculationService.getTimeInSeconds(nextDayStart, user.getPreferredTimezone())
-        );
+        LocalDateTime startOfDay = TimeCalculationService.setToStartOfDay(localDateTime);
+        LocalDateTime startOfNextDay = startOfDay.plusHours(24);
+
+        List<Event> eventsBetween = eventRepository.findEventsBetween(user, startOfDay, startOfNextDay);
+        SessionLength sessionLength = sessionLengthOptional.orElseGet(user::getPreferredSessionLength);
 
         Long workingHoursStartTime = TimeCalculationService.getTimeInSeconds(startOfDay, user.getPreferredTimezone());
-        Long workingHoursEndTime = TimeCalculationService.getTimeInSeconds(nextDayStart, user.getPreferredTimezone());
+        Long workingHoursEndTime = TimeCalculationService.getTimeInSeconds(startOfNextDay, user.getPreferredTimezone());
 
         eventsBetween.sort(Comparator.comparing(Event::getStartTime));
-        List<AvailabilityDTO> availableEvents = new ArrayList<>();
 
         // Check if working hours are provided
         if(user.getPreferredWorkingHoursStartTime() != null) {
-            workingHoursStartTime = TimeCalculationService.getTimeInSeconds(user.getPreferredWorkingHoursStartTime(), user.getPreferredTimezone());
-            workingHoursEndTime = TimeCalculationService.getTimeInSeconds(user.getPreferredWorkingHoursEndTime(), user.getPreferredTimezone());
+            workingHoursStartTime = TimeCalculationService.getTimeInSeconds(startOfDay,
+                    user.getPreferredWorkingHoursStartTime(),
+                    user.getPreferredTimezone());
+            workingHoursEndTime = TimeCalculationService.getTimeInSeconds(startOfDay,
+                    user.getPreferredWorkingHoursEndTime(),
+                    user.getPreferredTimezone());
         }
+
+        // If no events are scheduled, mark everything as available
+        if(eventsBetween.isEmpty()){
+            return TimeCalculationService.getAvailableSessions(workingHoursStartTime, workingHoursEndTime,
+                        sessionLength)
+                    .stream()
+                    .map(sessionStartTime ->AvailabilityDTO
+                                                .builder()
+                                                .startTime(
+                                                        TimeCalculationService.getTimeInLocalDateTime(
+                                                                sessionStartTime,
+                                                                user.getPreferredTimezone())
+                                                )
+                                                .sessionLength(sessionLength)
+                                                .build())
+                    .toList();
+        }
+
+        return this.getAvailableSlotsForUserInBetweenEvents(user, eventsBetween, workingHoursStartTime,
+                                                            workingHoursEndTime, sessionLength);
+    }
+
+    public List<AvailabilityDTO> getOverlapBetween(String userIdFirst, String userIdSecond, SessionLength sessionLength){
+        User firstUser = validateUser(userIdFirst);
+        User secondUser = validateUser(userIdSecond);
+
+        LocalDateTime midnight = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
+
+        // Convert to modifiable list
+        List<AvailabilityDTO> firstUserAvailability = new ArrayList<>(this.getAvailability(midnight, userIdFirst, Optional.of(sessionLength)));
+        List<AvailabilityDTO> secondUserAvailability = new ArrayList<>(this.getAvailability(midnight, userIdSecond, Optional.of(sessionLength)));
+
+        firstUserAvailability.sort(Comparator.comparing(AvailabilityDTO::getStartTime));
+        secondUserAvailability.sort(Comparator.comparing(AvailabilityDTO::getStartTime));
+
+        return this.getOverlappingSlotsBetweenTwoUsers(firstUser, secondUser, firstUserAvailability,
+                secondUserAvailability, sessionLength);
+
+    }
+
+    private List<AvailabilityDTO> getOverlappingSlotsBetweenTwoUsers(User firstUser,
+                                                                     User secondUser,
+                                                                     List<AvailabilityDTO> firstUserAvailability,
+                                                                     List<AvailabilityDTO> secondUserAvailability,
+                                                                     SessionLength sessionLength){
+        List<AvailabilityDTO> overlap = new ArrayList<>();
+
+        int firstUserAvailabilityIndex = 0;
+        int secondUserAvailabilityIndex = 0;
+        int firstUserAvailabilitySize = firstUserAvailability.size();
+        int secondUserAvailabilitySize = secondUserAvailability.size();
+
+        while(firstUserAvailabilityIndex < firstUserAvailabilitySize &&
+                secondUserAvailabilityIndex < secondUserAvailabilitySize){
+
+            Long firstUserEventStart = TimeCalculationService.getTimeInSeconds(
+                    firstUserAvailability.get(firstUserAvailabilityIndex).getStartTime(),
+                    firstUser.getPreferredTimezone()
+            );
+            Long secondUserEventStart = TimeCalculationService.getTimeInSeconds(
+                    secondUserAvailability.get(secondUserAvailabilityIndex).getStartTime(),
+                    secondUser.getPreferredTimezone()
+            );
+            Long firstUserEventEnd = TimeCalculationService.getTimeInSeconds(
+                    TimeCalculationService.getEndTimeLocalDateTime(
+                            firstUserAvailability.get(firstUserAvailabilityIndex).getStartTime(),
+                            firstUserAvailability.get(firstUserAvailabilityIndex).getSessionLength()),
+                    firstUser.getPreferredTimezone()
+            );
+            Long secondUserEventEnd = TimeCalculationService.getTimeInSeconds(
+                    TimeCalculationService.getEndTimeLocalDateTime(
+                            secondUserAvailability.get(secondUserAvailabilityIndex).getStartTime(),
+                            secondUserAvailability.get(secondUserAvailabilityIndex).getSessionLength()),
+                    secondUser.getPreferredTimezone()
+            );
+
+            // Core logic
+            Long intersectStart = Math.max(firstUserEventStart,secondUserEventStart);
+            Long intersectEnd = Math.min(firstUserEventEnd, secondUserEventEnd);
+
+            if(intersectEnd - intersectStart >= sessionLength.timeInSeconds){
+                overlap.add(AvailabilityDTO.builder()
+                        .startTime(TimeCalculationService.getTimeInLocalDateTime(
+                                intersectStart,
+                                firstUser.getPreferredTimezone()))
+                        .sessionLength(sessionLength)
+                        .build());
+            }
+
+            if(firstUserEventEnd < secondUserEventEnd)
+                firstUserAvailabilityIndex += 1;
+            else
+                secondUserAvailabilityIndex += 1;
+        }
+        return overlap;
+    }
+
+
+    private List<AvailabilityDTO> getAvailableSlotsForUserInBetweenEvents(User user,
+                                                                          List<Event> eventsBetween,
+                                                                          Long workingHoursStartTime,
+                                                                          Long workingHoursEndTime,
+                                                                          SessionLength sessionLength){
+        List<AvailabilityDTO> availableEvents = new ArrayList<>();
         for(int i = 0;i < eventsBetween.size();i++){
+            LocalDateTime eventStartTime = eventsBetween.get(i).getStartTime();
+            LocalDateTime eventEndTime = eventsBetween.get(i).getStartTime()
+                    .plusSeconds(eventsBetween.get(i).getSessionLength().timeInSeconds);
             if(i == 0 && !workingHoursStartTime.equals(
-                    TimeCalculationService.getTimeInSeconds(
-                            eventsBetween.get(0).getStartTime(),
-                            user.getPreferredTimezone()))) {
-                List<AvailabilityDTO> availableSlots = TimeCalculationService.getBlockedSessions(
-                    workingHoursStartTime,
-                    TimeCalculationService.getTimeInSeconds(eventsBetween.get(i).getStartTime(), user.getPreferredTimezone())
-                ).stream().map(session ->
-                        AvailabilityDTO
-                                .builder()
-                                .startTime(TimeCalculationService.getTimeInLocalDateTime(session.getSecond(),
-                                        user.getPreferredTimezone()))
-                                .sessionLength(session.getFirst())
-                                .build()).toList();
+                    TimeCalculationService.getTimeInSeconds(eventStartTime,user.getPreferredTimezone()))) {
+                List<AvailabilityDTO> availableSlots = this.divideSessionByLength(
+                        workingHoursStartTime,
+                        eventStartTime,
+                        sessionLength,
+                        user.getPreferredTimezone()
+                );
                 availableEvents.addAll(availableSlots);
                 continue;
             }
-            if(i == eventsBetween.size() - 1 && !workingHoursEndTime.equals(
-                    TimeCalculationService.getTimeInSeconds(
-                            eventsBetween.get(i).getStartTime()
-                                    .plusSeconds(eventsBetween.get(i).getSessionLength().timeInSeconds),
-                            user.getPreferredTimezone()))){
-                List<AvailabilityDTO> availableSlots = TimeCalculationService.getBlockedSessions(
-                        TimeCalculationService.getTimeInSeconds(
-                                eventsBetween.get(i).getStartTime()
-                                        .plusSeconds(eventsBetween.get(i).getSessionLength().timeInSeconds),
-                                user.getPreferredTimezone()),
-                        workingHoursEndTime
-                ).stream().map(session ->
-                        AvailabilityDTO
-                                .builder()
-                                .startTime(TimeCalculationService.getTimeInLocalDateTime(session.getSecond(),
-                                        user.getPreferredTimezone()))
-                                .sessionLength(session.getFirst())
-                                .build()).toList();
-                availableEvents.addAll(availableSlots);
+            if(i == eventsBetween.size() - 1){
+                // Separate out to make guard statement
+                if(!workingHoursEndTime.equals(
+                        TimeCalculationService.getTimeInSeconds(eventEndTime,user.getPreferredTimezone()))) {
+                    List<AvailabilityDTO> availableSlots = this.divideSessionByLength(
+                            eventEndTime,
+                            workingHoursEndTime,
+                            sessionLength,
+                            user.getPreferredTimezone()
+                    );
+                    availableEvents.addAll(availableSlots);
+                }
                 continue;
             }
-            List<AvailabilityDTO> availableSlots = TimeCalculationService.getBlockedSessions(
-                    TimeCalculationService.getTimeInSeconds(eventsBetween.get(i).getStartTime()
-                                    .plusSeconds(eventsBetween.get(i).getSessionLength().timeInSeconds),
-                                        user.getPreferredTimezone()),
-                    TimeCalculationService.getTimeInSeconds(eventsBetween.get(i + 1).getStartTime(), user.getPreferredTimezone())
-            ).stream().map(session ->
-                    AvailabilityDTO
-                            .builder()
-                            .startTime(TimeCalculationService.getTimeInLocalDateTime(session.getSecond(),
-                                    user.getPreferredTimezone()))
-                            .sessionLength(session.getFirst())
-                            .build()).toList();
+            List<AvailabilityDTO> availableSlots = this.divideSessionByLength(
+                    eventEndTime,
+                    eventsBetween.get(i + 1).getStartTime(),
+                    sessionLength,
+                    user.getPreferredTimezone()
+            );
             availableEvents.addAll(availableSlots);
         }
-        availableEvents = availableEvents
-                .stream()
-                .filter(event -> event.getSessionLength().timeInSeconds !=
-                                 SessionLength.BLOCKING_MINUTE_1.timeInSeconds)
-                .toList();
         return availableEvents;
+    }
+
+    private List<AvailabilityDTO> divideSessionByLength(Long startTime,
+                                                        LocalDateTime endTime,
+                                                        SessionLength sessionLength,
+                                                        ZoneId timezone){
+        return this.divideSessionByLength(
+                startTime,
+                TimeCalculationService.getTimeInSeconds(endTime,timezone),
+                sessionLength,
+                timezone);
+    }
+
+    private List<AvailabilityDTO> divideSessionByLength(LocalDateTime startTime,
+                                                        Long endTime,
+                                                        SessionLength sessionLength,
+                                                        ZoneId timezone){
+        return this.divideSessionByLength(
+                TimeCalculationService.getTimeInSeconds(startTime,timezone),
+                endTime,
+                sessionLength,
+                timezone);
+    }
+
+    private List<AvailabilityDTO> divideSessionByLength(LocalDateTime startTime,
+                                                        LocalDateTime endTime,
+                                                        SessionLength sessionLength,
+                                                        ZoneId timezone){
+        return this.divideSessionByLength(
+                TimeCalculationService.getTimeInSeconds(startTime,timezone),
+                TimeCalculationService.getTimeInSeconds(endTime,timezone),
+                sessionLength,
+                timezone);
+    }
+
+    private List<AvailabilityDTO> divideSessionByLength(Long startTime,
+                                                        Long endTime,
+                                                        SessionLength sessionLength,
+                                                        ZoneId timezone){
+        return TimeCalculationService.getAvailableSessions(
+                    startTime,
+                    endTime,
+                    sessionLength)
+                .stream()
+                .map(sessionStartTime -> AvailabilityDTO
+                                            .builder()
+                                            .startTime(TimeCalculationService.getTimeInLocalDateTime(sessionStartTime,
+                                                    timezone))
+                                            .sessionLength(sessionLength)
+                                            .build())
+                .toList();
     }
 }
