@@ -1,0 +1,258 @@
+{
+	"info": {
+		"_postman_id": "ddbdda70-9705-43d4-8c74-7cd9246156fe",
+		"name": "xyz.harbor",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "38506646"
+	},
+	"item": [
+		{
+			"name": "Create user",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"username\": \"test2\",\r\n    \"password\": \"password\",\r\n    \"first_name\": \"first\",\r\n    \"last_name\": \"last\",\r\n    \"email\": \"test2@gmail.com\",\r\n    \"preferred_session_length\": \"30 Minutes\",\r\n    \"preferred_timezone\": \"Asia/Kolkata\",\r\n    \"preferred_start_working_hours\": \"14:30:00\",\r\n    \"preferred_end_working_hours\": \"18:30:00\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/v1/user/create",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"user",
+						"create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get availability",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/v1/availability/get/?time_today=2024-09-22T14:30:00&timezone=Asia/Kolkata&userId=18939425-4b48-4f9a-bd98-40298df8f4a3",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"availability",
+						"get",
+						""
+					],
+					"query": [
+						{
+							"key": "time_today",
+							"value": "2024-09-22T14:30:00"
+						},
+						{
+							"key": "timezone",
+							"value": "Asia/Kolkata"
+						},
+						{
+							"key": "userId",
+							"value": "18939425-4b48-4f9a-bd98-40298df8f4a3"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Show available between",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/v1/availability/show-available-between?user1=18939425-4b48-4f9a-bd98-40298df8f4a3&user2=6f7900a6-9ce5-491f-b14d-70de46208954&session_length=45m",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"availability",
+						"show-available-between"
+					],
+					"query": [
+						{
+							"key": "user1",
+							"value": "18939425-4b48-4f9a-bd98-40298df8f4a3"
+						},
+						{
+							"key": "user2",
+							"value": "6f7900a6-9ce5-491f-b14d-70de46208954"
+						},
+						{
+							"key": "session_length",
+							"value": "45m"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get next meet",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/v1/availability/get-next-meetup/?userId=18939425-4b48-4f9a-bd98-40298df8f4a3",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"availability",
+						"get-next-meetup",
+						""
+					],
+					"query": [
+						{
+							"key": "userId",
+							"value": "18939425-4b48-4f9a-bd98-40298df8f4a3"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get next meetup",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/v1/availability/get-next-meetup/?userId=18939425-4b48-4f9a-bd98-40298df8f4a3",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"availability",
+						"get-next-meetup",
+						""
+					],
+					"query": [
+						{
+							"key": "userId",
+							"value": "18939425-4b48-4f9a-bd98-40298df8f4a3"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Mark unavailability",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"startOfUnavailability\": \"2024-09-22T15:30:00\",\r\n    \"endOfUnavailability\": \"2024-09-22T16:30:00\",\r\n    \"userId\": \"18939425-4b48-4f9a-bd98-40298df8f4a3\",\r\n    \"timezone\": \"Asia/Kolkata\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/v1/availability/mark-unavailability",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"availability",
+						"mark-unavailability"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get meetups",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/v1/availability/get-meetups?days=1&userId=18939425-4b48-4f9a-bd98-40298df8f4a3",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"availability",
+						"get-meetups"
+					],
+					"query": [
+						{
+							"key": "days",
+							"value": "1"
+						},
+						{
+							"key": "userId",
+							"value": "18939425-4b48-4f9a-bd98-40298df8f4a3"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Make booking",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{   \r\n    \"ownerUserId\": \"18939425-4b48-4f9a-bd98-40298df8f4a3\",\r\n    \"attendeeName\": \"testNameAttend\",\r\n    \"attendeeEmail\": \"testNameEmail\",\r\n    \"startTime\": \"2024-09-22T17:30:00\",\r\n    \"sessionLength\": \"30m\",\r\n    \"timezone\": \"Asia/Kolkata\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/v1/availability/make-booking",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"availability",
+						"make-booking"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

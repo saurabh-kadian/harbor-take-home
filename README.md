@@ -37,10 +37,12 @@ We can shave off our space, thereby saving money by taking seconds instead of mi
 
 ##### 5. Postgres vs MongoDB?
 ----
-a. Postgres
+**a. Postgres**
+
 As calculated in the previous section, per day for a user we can have 48 sessions. Assuming a healthy amount of users before we re-architect, let's take 1 million users. We will have 48 M sessions per day for our user base. Assuming 100 Bytes per DB entry, that is $48 * 10^8 \text{ bytes} \rightarrow 4.8 * 10^9 \text{ bytes}$ which is 4.8 GB worth of data daily. Assuming we only book for 2 months in advance, we can have maximum of 288 GB worth of data for all customers. Although, systems can handle this much data, but our queries will be significantly slower. To mitigate this, we will shard the events/sessions data on userId. Also, once the events of today happen, we no longer need them in a hot storage, so let's run a cronjob which migrates all the events that happen more than 24 hours ago to our data warehouse. This will keep our databases light and faster running. We often run into celebrity problems when we shard, so we can re-shard and isolate the user if something like that happens. Since the system is read-heavy, having indices on event starting time will give us an edge. Also, all this load is manageable using sharding.
 
-b. MongoDB
+**b. MongoDB**
+
 To model the events associated with a user with user data itself seems like a good data choice. Querying and filtering will require us pulling a single document. However, keeping all the past events in the hot store is not advisable. So we need to have some heavy writes, where we push past event to cold store and then make a new write. The alternate to that would be to scan the db for all users and getting past events from them and pushing to cold store. Writes will be fast for a NoSQL DB and since reading happens from a single document with this cold storage push, each document should be light enough to pull fast. Data estimates will be similar.
 
 Verdict
@@ -54,7 +56,13 @@ For low user numbers and our current feature set, it doesn't really matter. So i
 ----
 ![Handwavy high level design](.assets/basicDesign.PNG)
 
-## Postman collection available
+## Follow-up features
+1. Booking should be able to invite multiple users added apart from owner and attendee, for which we already have a metadata converter.
+2. Meeting link can be set to some default, so we can push with the same meeting link atleast. Have a field for that in our schema.
+3. Allow overlap findings between multiple users. Show availability as well as their blocked calendars.
+4. Balance timezone difference between meetings. Already setup most of the code but need to weed out corner cases using tests.
+
+## Postman collection available [here](xyz.harbor.calendly.postman_collection.json)
 ----
 ## Running server
 ----

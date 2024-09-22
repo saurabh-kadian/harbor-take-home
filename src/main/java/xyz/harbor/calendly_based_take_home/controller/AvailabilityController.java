@@ -7,6 +7,7 @@ import xyz.harbor.calendly_based_take_home.dto.AvailabilityDTO;
 import xyz.harbor.calendly_based_take_home.dto.EventDTO;
 import xyz.harbor.calendly_based_take_home.dto.UnavailabilityDTO;
 import xyz.harbor.calendly_based_take_home.model.SessionLength;
+import xyz.harbor.calendly_based_take_home.request.MakeBookingRequest;
 import xyz.harbor.calendly_based_take_home.request.MarkUnavailabilityRequest;
 import xyz.harbor.calendly_based_take_home.response.MarkUnavailabilityResponse;
 import xyz.harbor.calendly_based_take_home.service.AvailabilityService;
@@ -41,7 +42,28 @@ public class AvailabilityController {
                 );
     }
 
-    // TODO(skadian): userId will be passed with access token (auth), but here just putting in the url
+    @RequestMapping(value = {"/make-booking", "/make-booking/"}, method = RequestMethod.POST)
+    public ResponseEntity<EventDTO> makeBooking(@RequestBody MakeBookingRequest makeBookingRequest){
+        return ResponseEntity
+                .ok()
+                .body(
+                        availabilityService.makeBooking(
+                                EventDTO
+                                        .builder()
+                                        .startTime(TimeCalculationService.parseLocalDateTime(
+                                                makeBookingRequest.getStartTime(),
+                                                ZoneId.of(makeBookingRequest.getTimezone())
+                                        ))
+                                        .timezone(ZoneId.of(makeBookingRequest.getTimezone()))
+                                        .attendeeName(makeBookingRequest.getAttendeeName())
+                                        .attendeeEmail(makeBookingRequest.getAttendeeEmail())
+                                        .sessionLength(makeBookingRequest.getSessionLength())
+                                        .build(),
+                                makeBookingRequest.getOwnerUserId()
+                        )
+                );
+    }
+
     @RequestMapping(value = {"/get-meetups/", "/get-meetups"}, method = RequestMethod.GET)
     public ResponseEntity<List<EventDTO>> getMeetups(@RequestParam(name = "days") int days,
                                                      @RequestParam(name = "userId") String userId){

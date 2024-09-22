@@ -83,7 +83,33 @@ public class AvailabilityService {
     }
 
     /**
-     * Note: Here meetups will be shown in users preferred timezone.
+     * @param eventDTO
+     * @param userId
+     * @return List<EventDTO>
+     */
+    public EventDTO makeBooking(EventDTO eventDTO, String userId){
+        User user = validateUser(userId);
+        List<Event> eventsBetween = eventRepository.findEventsBetween(user,
+                eventDTO.getStartTime(),
+                eventDTO.getStartTime().plusSeconds(eventDTO.getSessionLength().timeInSeconds));
+        if(!eventsBetween.isEmpty())
+            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,
+                    "Can't make booking, conflicting with another meeting.");
+        Event event = Event.builder()
+                .eventId(UUID.randomUUID().toString())
+                .user(user)
+                .startTime(eventDTO.getStartTime())
+                .attendeeName(eventDTO.getAttendeeName())
+                .attendeeEmail(eventDTO.getAttendeeEmail())
+                .timezone(eventDTO.getTimezone())
+                .sessionLength(eventDTO.getSessionLength())
+                .build();
+        eventRepository.save(event);
+        return eventDTO;
+    }
+
+    /**
+     * Note: Here meetups will be shown in users preferred timezone. Skipping self unavailability meetups.
      * @param days
      * @param userId
      * @return List<EventDTO>
@@ -96,7 +122,7 @@ public class AvailabilityService {
         LocalDateTime currentTime = LocalDateTime.now();
         LocalDateTime endTime = currentTime.plusDays(days);
         List<Event> eventsBetween = eventRepository.findEventsBetween(user, currentTime, endTime);
-        return eventsBetween.stream().map(EventDTO::fromEvent).toList();
+        return eventsBetween.stream().filter(EventDTO::isEventBlockedByOthers).map(EventDTO::fromEvent).toList();
     }
 
     /**
