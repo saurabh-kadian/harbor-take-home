@@ -35,6 +35,9 @@ public class Event {
     @Column(name = "session_length")
     SessionLength sessionLength;
 
+    @Column(name = "timezone")
+    ZoneId timezone;
+
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
 

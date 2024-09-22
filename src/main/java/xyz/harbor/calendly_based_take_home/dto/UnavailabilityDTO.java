@@ -32,16 +32,12 @@ public class UnavailabilityDTO {
         ZoneId timezone = ZoneId.of(markUnavailabilityRequest.getTimezone());
         return UnavailabilityDTO.builder()
                 .startOfUnavailability(
-                        TimeCalculationService.getTimeInLocalDateTime(
-                                Long.parseLong(markUnavailabilityRequest.getStartOfUnavailability()),
-                                timezone
-                        )
+                        TimeCalculationService.parseLocalDateTime(markUnavailabilityRequest.getStartOfUnavailability(),
+                                timezone)
                 )
                 .endOfUnavailability(
-                        TimeCalculationService.getTimeInLocalDateTime(
-                                Long.parseLong(markUnavailabilityRequest.getEndOfUnavailability()),
-                                timezone
-                        )
+                        TimeCalculationService.parseLocalDateTime(markUnavailabilityRequest.getEndOfUnavailability(),
+                                timezone)
                 )
                 .timezone(timezone)
                 .build();

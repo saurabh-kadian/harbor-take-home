@@ -27,6 +27,7 @@ public class EventDTO {
     String attendeeEmail;
     LocalDateTime startTime;
     SessionLength sessionLength;
+    ZoneId timezone;
 
     public static EventDTO empty(){
         return EventDTO.builder().build();
@@ -38,6 +39,7 @@ public class EventDTO {
                 .attendeeEmail(event.getAttendeeEmail())
                 .startTime(event.getStartTime())
                 .sessionLength(event.getSessionLength())
+                .timezone(event.getTimezone())
                 .build();
     }
 
@@ -45,12 +47,13 @@ public class EventDTO {
         return !event.getAttendeeName().equals(SELF_KEY);
     }
 
-    public static EventDTO forSelfUnavailability(Long startTime, SessionLength sessionLength){
+    public static EventDTO forSelfUnavailability(Long startTime, SessionLength sessionLength, ZoneId timezone){
         return EventDTO.builder()
                 .attendeeName(SELF_KEY)
                 .attendeeEmail(SELF_KEY)
                 .sessionLength(sessionLength)
-                .startTime(TimeCalculationService.getTimeInLocalDateTime(startTime, ZoneId.systemDefault()))
+                .startTime(TimeCalculationService.getTimeInLocalDateTime(startTime, timezone))
+                .timezone(timezone)
                 .build();
     }
 }

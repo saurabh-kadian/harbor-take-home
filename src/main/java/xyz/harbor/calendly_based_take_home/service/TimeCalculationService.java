@@ -4,11 +4,20 @@ import org.springframework.stereotype.Service;
 import xyz.harbor.calendly_based_take_home.model.SessionLength;
 
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class TimeCalculationService {
+
+    public static LocalDateTime parseLocalDateTime(String dateTime, ZoneId timezone){
+        return LocalDateTime
+                    .parse(dateTime,
+                            DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                    .atZone(timezone)
+                    .toLocalDateTime();
+    }
 
     public static LocalDateTime setToStartOfDay(LocalDateTime dateTime){
         return dateTime.withHour(0).withMinute(0).withSecond(0);

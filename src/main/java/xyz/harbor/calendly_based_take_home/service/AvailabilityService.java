@@ -63,7 +63,8 @@ public class AvailabilityService {
                 .map(sessionStartTime -> EventDTO
                         .forSelfUnavailability(
                                 sessionStartTime,
-                                user.getPreferredSessionLength()
+                                user.getPreferredSessionLength(),
+                                user.getPreferredTimezone()
                         )
                 )
                 .peek(eventDTO -> {

@@ -10,6 +10,7 @@ import xyz.harbor.calendly_based_take_home.model.SessionLength;
 import xyz.harbor.calendly_based_take_home.request.MarkUnavailabilityRequest;
 import xyz.harbor.calendly_based_take_home.response.MarkUnavailabilityResponse;
 import xyz.harbor.calendly_based_take_home.service.AvailabilityService;
+import xyz.harbor.calendly_based_take_home.service.TimeCalculationService;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -43,7 +44,7 @@ public class AvailabilityController {
     // TODO(skadian): userId will be passed with access token (auth), but here just putting in the url
     @RequestMapping(value = {"/get-meetups/", "/get-meetups"}, method = RequestMethod.GET)
     public ResponseEntity<List<EventDTO>> getMeetups(@RequestParam(name = "days") int days,
-                                                          @RequestParam(name = "userId") String userId){
+                                                     @RequestParam(name = "userId") String userId){
         return ResponseEntity.ok().body(availabilityService.getMeetups(days, userId));
     }
 
@@ -56,11 +57,7 @@ public class AvailabilityController {
     public ResponseEntity<List<AvailabilityDTO>> getAvailability(@RequestParam(name = "time_today") String timeToday,
                                                                  @RequestParam(name = "timezone") String timezone,
                                                                  @RequestParam(name = "userId") String userId){
-        LocalDateTime timeTodayLocal = LocalDateTime
-                .parse(timeToday,
-                        DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                .atZone(ZoneId.of(timezone))
-                .toLocalDateTime();
+        LocalDateTime timeTodayLocal = TimeCalculationService.parseLocalDateTime(timeToday,ZoneId.of(timezone));
         return ResponseEntity.ok().body(availabilityService.getAvailability(timeTodayLocal, userId));
     }
 
