@@ -21,6 +21,7 @@ To understand more about what all we can support, we look at calendly itself. Wh
 - We will be using a single Redis instance and will NOT be sharding our Postgres. With consistent hashing and service discovery tool like Zookeeper we should be able to do both.
 - The application is created using Java 17. We are using docker to host all our services.
 - Users can create a profile but can only change passwords after the profile is set. Updates to other fields are not permitted. Some fields like username and email should anyways not be permitted to change by design. Others like working hours for sake of simplicity are set at the time of profile creating, otherwise writing a CRUD of users would be the way to go.
+- The time slots for meetings are fixed but extensible. The time slots once set for a user become the preferred user meeting size. Which will be used for all scheduling.
 
 ##### 2. Approaching the problem inverted
 ----
@@ -64,6 +65,17 @@ For low user numbers and our current feature set, it doesn't really matter. So i
 
 ## Postman collection available [here](xyz.harbor.calendly.postman_collection.json)
 ----
+
+#### Available APIs
+1. `/v1/availability/get-meetups` $\rightarrow$ show all meetups
+2. `/v1/user/create` $\rightarrow$ create a new user
+3. `/v1/user/change-password` $\rightarrow$ not in collection
+4. `/v1/availability/get` $\rightarrow$ get all available slots for a user
+5. `/v1/availability/show-available-between` $\rightarrow$ key api to see availability between 2 users
+6. `/v1/availability/get-next-meetup` $\rightarrow$ shows upcoming meeting
+7. `/v1/availability/mark-unavailability` $\rightarrow$ block time as unavailable
+8. `/v1/availability/make-booking` $rightarrow$ book meeting with a user
+
 ## Running server
 ----
 ```
