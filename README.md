@@ -75,7 +75,7 @@ For low user numbers and our current feature set, it doesn't really matter. So i
 5. `/v1/availability/show-available-between` $\rightarrow$ key api to see availability between 2 users
 6. `/v1/availability/get-next-meetup` $\rightarrow$ shows upcoming meeting
 7. `/v1/availability/mark-unavailability` $\rightarrow$ block time as unavailable
-8. `/v1/availability/make-booking` $rightarrow$ book meeting with a user
+8. `/v1/availability/make-booking` $\rightarrow$ book meeting with a user
 
 ## Running server
 ----
