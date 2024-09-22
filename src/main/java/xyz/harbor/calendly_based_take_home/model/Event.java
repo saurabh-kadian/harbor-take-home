@@ -2,11 +2,9 @@ package xyz.harbor.calendly_based_take_home.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import xyz.harbor.calendly_based_take_home.converter.JSONSessionMapConverter;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Map;
 
 @Entity
 @Table(name="event")

@@ -8,11 +8,8 @@ import xyz.harbor.calendly_based_take_home.model.Event;
 import xyz.harbor.calendly_based_take_home.model.SessionLength;
 import xyz.harbor.calendly_based_take_home.service.TimeCalculationService;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.HashMap;
-import java.util.Map;
 
 @Builder
 @NoArgsConstructor
@@ -44,7 +41,7 @@ public class EventDTO {
                 .build();
     }
 
-    public static boolean isSessionBlockedByOthers(Event event){
+    public static boolean isEventBlockedByOthers(Event event){
         return !event.getAttendeeName().equals(SELF_KEY);
     }
 

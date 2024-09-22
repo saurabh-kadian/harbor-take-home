@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-public class JSONSessionMapConverter implements AttributeConverter<Map<String, String>, String> {
+public class JSONSessionMetadataConverter implements AttributeConverter<Map<String, String>, String> {
     @Override
     public String convertToDatabaseColumn(Map<String, String> sessionDetails) {
         ObjectMapper objectMapper = new ObjectMapper();

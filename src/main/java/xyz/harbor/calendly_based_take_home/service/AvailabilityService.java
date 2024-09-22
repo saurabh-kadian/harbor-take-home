@@ -29,27 +29,28 @@ public class AvailabilityService {
         this.eventRepository = eventRepository;
     }
 
-    private User validateUser(String userId){
-        Optional<User> userOptional = userRepository.findById(userId);
-        if(userOptional.isEmpty())
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found. Cannot enter unavailability of unknown user.");
-        return userOptional.get();
-    }
-
+    /**
+     * Note: This function as of now throws when self unavailability collisions happen. To bypass, we can simply merge
+     * these intersecting time quanta(s) by removing earlier persisted events and taking the maximum of endTime and
+     * minimum of startTime, making these, our new events.
+     * @param unavailabilityDTO
+     * @param userId
+     * @return List<EventDTO>
+     */
     public List<EventDTO> markUnavailability(UnavailabilityDTO unavailabilityDTO, String userId){
         User user = validateUser(userId);
         List<Event> eventsBetween = eventRepository.findEventsBetween(user,
                 unavailabilityDTO.getStartOfUnavailability(),
                 unavailabilityDTO.getEndOfUnavailability());
-        List<Event> eventsBetweenByOthers = eventsBetween.stream().filter(EventDTO::isSessionBlockedByOthers).toList();
+        List<Event> eventsBetweenByOthers = eventsBetween.stream().filter(EventDTO::isEventBlockedByOthers).toList();
 
         if(!eventsBetweenByOthers.isEmpty())
-            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, "You have a meeting setup between mentioned period of unavailability.");
+            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,
+                    "You have a meeting setup between mentioned period of unavailability.");
 
-        // TODO(skadian): Throwing here, otherwise we can simply merge these intersecting time quanta(s) by removing
-        //                earlier events taking maximum of endTime and minimum of startTime and allocating events again.
         if(!eventsBetween.isEmpty())
-            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, "You already made some sections of this time unavailable, ma;ybe try with smaller values");
+            throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,
+                    "You already made some sections of this time unavailable, ma;ybe try with smaller values");
 
         List<Long> availableSessions = TimeCalculationService.getAvailableSessions(
                 unavailabilityDTO.getStartTimeInSeconds(),
@@ -80,7 +81,12 @@ public class AvailabilityService {
                 .toList();
     }
 
-    // TODO(skadian): Not adjusting for timezone here because user already has a preferred timezone.
+    /**
+     * Note: Here meetups will be shown in users preferred timezone.
+     * @param days
+     * @param userId
+     * @return List<EventDTO>
+     */
     public List<EventDTO> getMeetups(int days, String userId){
         if(days >= 62)
             throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE,
@@ -92,6 +98,11 @@ public class AvailabilityService {
         return eventsBetween.stream().map(EventDTO::fromEvent).toList();
     }
 
+    /**
+     * Note: Here next meetup will be shown in users preferred timezone.
+     * @param userId
+     * @return EventDTO
+     */
     public EventDTO getNextMeetup(String userId){
         User user = validateUser(userId);
         Optional<Event> nextEvent = eventRepository.findTopByUserAndStartTimeGreaterThanEqualOrderByStartTimeAsc(user,
@@ -101,10 +112,23 @@ public class AvailabilityService {
         return EventDTO.fromEvent(nextEvent.get());
     }
 
+    /**
+     * Note: Here availability will be shown in users preferred timezone.
+     * @param localDateTime
+     * @param userId
+     * @return List<AvailabilityDTO>
+     */
     public List<AvailabilityDTO> getAvailability(LocalDateTime localDateTime, String userId){
         return this.getAvailability(localDateTime, userId, Optional.empty());
     }
 
+    /**
+     * Note: Here availability will be shown in users preferred timezone.
+     * @param localDateTime
+     * @param userId
+     * @param sessionLengthOptional
+     * @return List<AvailabilityDTO>
+     */
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     public List<AvailabilityDTO> getAvailability(LocalDateTime localDateTime,
                                                  String userId,
@@ -152,6 +176,13 @@ public class AvailabilityService {
                                                             workingHoursEndTime, sessionLength);
     }
 
+    /**
+     * Note: Timezone adjustment is pending.
+     * @param userIdFirst
+     * @param userIdSecond
+     * @param sessionLength
+     * @return List<AvailabilityDTO>
+     */
     public List<AvailabilityDTO> getOverlapBetween(String userIdFirst, String userIdSecond, SessionLength sessionLength){
         User firstUser = validateUser(userIdFirst);
         User secondUser = validateUser(userIdSecond);
@@ -159,8 +190,10 @@ public class AvailabilityService {
         LocalDateTime midnight = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
 
         // Convert to modifiable list
-        List<AvailabilityDTO> firstUserAvailability = new ArrayList<>(this.getAvailability(midnight, userIdFirst, Optional.of(sessionLength)));
-        List<AvailabilityDTO> secondUserAvailability = new ArrayList<>(this.getAvailability(midnight, userIdSecond, Optional.of(sessionLength)));
+        List<AvailabilityDTO> firstUserAvailability = new ArrayList<>(this.getAvailability(midnight, userIdFirst,
+                Optional.of(sessionLength)));
+        List<AvailabilityDTO> secondUserAvailability = new ArrayList<>(this.getAvailability(midnight, userIdSecond,
+                Optional.of(sessionLength)));
 
         firstUserAvailability.sort(Comparator.comparing(AvailabilityDTO::getStartTime));
         secondUserAvailability.sort(Comparator.comparing(AvailabilityDTO::getStartTime));
@@ -185,6 +218,7 @@ public class AvailabilityService {
         while(firstUserAvailabilityIndex < firstUserAvailabilitySize &&
                 secondUserAvailabilityIndex < secondUserAvailabilitySize){
 
+            // Initialize for ease of reading
             Long firstUserEventStart = TimeCalculationService.getTimeInSeconds(
                     firstUserAvailability.get(firstUserAvailabilityIndex).getStartTime(),
                     firstUser.getPreferredTimezone()
@@ -323,5 +357,13 @@ public class AvailabilityService {
                                             .sessionLength(sessionLength)
                                             .build())
                 .toList();
+    }
+
+    private User validateUser(String userId){
+        Optional<User> userOptional = userRepository.findById(userId);
+        if(userOptional.isEmpty())
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "User not found. Cannot enter unavailability of unknown user.");
+        return userOptional.get();
     }
 }

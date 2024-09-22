@@ -14,13 +14,6 @@ public class TimeCalculationService {
         return dateTime.withHour(0).withMinute(0).withSecond(0);
     }
 
-    public static LocalDateTime convertLocalTimeToLocalDateTime(LocalTime localTime){
-        return LocalDateTime.now()
-                .withHour(localTime.getHour())
-                .withMinute(localTime.getMinute())
-                .withSecond(localTime.getSecond());
-    }
-
     public static Long getTimeInSeconds(LocalDateTime day, LocalTime localTime, ZoneId zoneId){
         LocalDateTime dateTimeWithTime = day.withHour(localTime.getHour())
                 .withMinute(localTime.getMinute())
@@ -43,14 +36,10 @@ public class TimeCalculationService {
         return localDateTime.plusSeconds(sessionLength.timeInSeconds);
     }
 
-    public static Long getEndTimeInSeconds(SessionLength sessionLength, Long startTime){
-        return startTime + sessionLength.timeInSeconds;
-    }
-
     public static List<Long> getAvailableSessions(Long startTime, Long endTime, SessionLength sessionLength){
         List<Long> blockedSessions = new ArrayList<>();
         while(startTime <= endTime) {
-            if(!pullSession(startTime, endTime, sessionLength))
+            if(!canPullSession(startTime, endTime, sessionLength))
                 break;
             blockedSessions.add(startTime);
             startTime += sessionLength.timeInSeconds;
@@ -58,16 +47,10 @@ public class TimeCalculationService {
         return blockedSessions;
     }
 
-    // TODO(skadian): For extensibility, take all the values of the enum, sort by timeInSeconds in descending and start
-    //                allocating
-    private static Boolean pullSession(Long startTime, Long endTime, SessionLength sessionLength){
+    private static Boolean canPullSession(Long startTime, Long endTime, SessionLength sessionLength){
         if(endTime - startTime >= sessionLength.timeInSeconds)
             return Boolean.TRUE;
         return Boolean.FALSE;
-    }
-
-    public static boolean isStartOfDay(LocalDateTime claimedStartOfDay){
-        return claimedStartOfDay.toLocalTime().equals(LocalTime.MIDNIGHT);
     }
 
 }
