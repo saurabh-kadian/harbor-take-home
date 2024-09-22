@@ -1,0 +1,30 @@
+name: Deploy docker compose on AWS EC2
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Build Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build, tag and push image to Amazon ECR and then deploy on AWS EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.AWS_SSH_PEM }}
+          HOST: ${{ secrets.AWS_EC2_HOST }}
+          USER: ${{ secrets.AWS_EC2_USERNAME }}
+          REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          mkdir -p ~/.ssh_secret
+          echo "$PRIVATE_KEY" > ~/.ssh_secret/id_rsa && chmod 600 ~/.ssh_secret/id_rsa
+          
+          echo "Stop and prune all docker system"
+          ssh -o StrictHostKeyChecking=no -T -i ~/.ssh_secret/id_rsa $USER@$HOST "docker stop backend-backend-1 && docker system prune --all --force"
+
+          echo "Pull git repo and run docker-compose-prod.yml"
+          ssh -o StrictHostKeyChecking=no -T -i ~/.ssh_secret/id_rsa $USER@$HOST "cd ./backend && git checkout main && git pull origin main && docker-compose -f compose.yml up -d --build"
